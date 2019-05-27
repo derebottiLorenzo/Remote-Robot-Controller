@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "orazio_client.h": "c",
+        "stdlib.h": "c"
+    }
+}
