@@ -1,25 +1,15 @@
-#include<stdlib.h>
-#include<stdio.h>
-#include<string.h>
-#include<termios.h>
-#include<pthread.h>
-#include<linux/joystick.h>
-
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <termios.h>
+#include <pthread.h>
+#include <linux/joystick.h>
+#include <libwebsockets.h>
+#include "rrc_ws.h"
 #include "orazio_client.h"
 #include "orazio_print_packet.h"
 
 #define NUM_JOINTS 2
-
-typedef struct {
-    int fd;
-    double max_tv;
-    double max_rv;
-    int tv_axis;
-    int rv_axis;
-    int boos_button;
-    int halt_button;
-    const char* joy_device;
-} JoyArgs;
 
 typedef enum {
     System=0,
@@ -33,6 +23,7 @@ typedef enum {
 
 Mode mode=Start;
 static struct OrazioClient* client=0; 
+struct joy_packet* ic;
 
 static DifferentialDriveControlPacket drive_control={
     .header.type=DIFFERENTIAL_DRIVE_CONTROL_PACKET_ID,
@@ -50,9 +41,8 @@ void stopRobot(void){
 }
 
 int main(int argc, char** argv){
-    char* joy_device="/dev/input/js0";
     char* serial_device="/dev/ttyACM0";
-    printf("Starting %s on serial device %s controlled by %s",argv[0],serial_device,joy_device);
+    printf("Starting %s on serial device %s \n",argv[0],serial_device);
 
     SystemStatusPacket system_status={
         .header.type=SYSTEM_STATUS_PACKET_ID,
@@ -111,9 +101,14 @@ int main(int argc, char** argv){
     //    get the parameters refreshed
     OrazioClient_get(client, (PacketHeader*) &system_params);
 
-    // 6. TODO: server thread to read joyinput
-
-    Mode previous_mode = mode;
+    // 6. server thread to read joyinput
+    struct OrazioWSContext* web_server=OrazioWebsocketServer_start(client,9000, NULL, 115200, &drive_control);
+    if(!web_server){
+        fprintf(stderr,"error on creating server thread\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    Mode previous_mode=mode;
     /* 7. main loop:
        -- send in output all controls
        -- sync
