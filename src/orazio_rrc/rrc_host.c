@@ -5,44 +5,91 @@
 #include <pthread.h>
 #include <linux/joystick.h>
 #include <libwebsockets.h>
+#include <signal.h>
 #include "rrc_ws.h"
 #include "orazio_client.h"
 #include "orazio_print_packet.h"
 
 #define NUM_JOINTS 2
 
-typedef enum {
-    System=0,
-    Joints=1,
-    Drive=2,
-    Ranges=3,
-    None=4,
-    Start=-1,
-    Stop=-2,
-} Mode;
+typedef enum{
+    System = 0,
+    Joints = 1,
+    Drive = 2,
+    Ranges = 3,
+    None = 4,
+    Start = -1,
+    Stop = -2,
+}Mode;
 
-Mode mode=Start;
-static struct OrazioClient* client=0; 
-struct joy_packet* ic;
+Mode mode = Start;
+static struct OrazioClient *client = 0;
 
-static DifferentialDriveControlPacket drive_control={
-    .header.type=DIFFERENTIAL_DRIVE_CONTROL_PACKET_ID,
-    .header.size=sizeof(DifferentialDriveControlPacket),
-    .header.seq=1,
-    .translational_velocity=0,
-    .rotational_velocity=0
+const char *banner[]={
+  "remote_robot_controller",
+  "generaized host for remote_robot_controller",
+  "usage:"
+  "$> rrc_host <parameters>",
+  "starts a host that accept connections from localhost:9000",
+  "parameters: ",
+  "-serial-dev <string>: the serial device (default /dev/ttyACM0)",
+  "-cam        <string>: the camera which streams(default /dev/video0)",
+  0
+};
+
+void printBanner(){
+    const char *const *line = banner;
+    while (*line){
+        printf("%s\n", *line);
+        line++;
+    }
+}
+
+static DifferentialDriveControlPacket drive_control = {
+    .header.type = DIFFERENTIAL_DRIVE_CONTROL_PACKET_ID,
+    .header.size = sizeof(DifferentialDriveControlPacket),
+    .header.seq = 1,
+    .translational_velocity = 0,
+    .rotational_velocity = 0
 };
 
 void stopRobot(void){
-    drive_control.header.seq=0;
-    drive_control.rotational_velocity=0;
-    drive_control.translational_velocity=0;
-    OrazioClient_sendPacket(client, (PacketHeader*)&drive_control,0);
+    drive_control.header.seq = 0;
+    drive_control.rotational_velocity = 0;
+    drive_control.translational_velocity = 0;
+    OrazioClient_sendPacket(client, (PacketHeader *)&drive_control, 0);
 }
 
+void sigint_handler(int sig){
+	mode = Stop;
+}
+
+char* default_serial_device = "/dev/ttyACM0";
+char* default_cam = "/dev/video0";
+
 int main(int argc, char** argv){
-    char* serial_device="/dev/ttyACM0";
-    printf("Starting %s on serial device %s \n",argv[0],serial_device);
+    int c = 1;
+    char* serial_device = default_serial_device;
+    char* cam = default_cam;
+    signal(SIGINT, sigint_handler);
+    while(c < argc){
+        if(!strcmp(argv[c], "-serial-dev")){
+            c++;
+            serial_device = argv[c];
+        }
+        else if(!strcmp(argv[c], "-cam")){
+            c++;
+            cam = argv[c];
+        }
+        else if(!strcmp(argv[c], "-help")){
+            printBanner();
+            return 0;
+        }
+    }
+
+    printf("running with parameters\n");
+    printf(" serial device: %s\n", serial_device);
+    printf(" camera: %s\n", cam);
 
     SystemStatusPacket system_status={
         .header.type=SYSTEM_STATUS_PACKET_ID,
@@ -102,8 +149,8 @@ int main(int argc, char** argv){
     OrazioClient_get(client, (PacketHeader*) &system_params);
 
     // 6. server thread to read joyinput
-    struct OrazioWSContext* web_server=OrazioWebsocketServer_start(client,9000, NULL, 115200, &drive_control);
-    if(!web_server){
+    struct OrazioWSContext* ctx = OrazioWebsocketServer_start(client, 9000, NULL, 115200, cam, &drive_control);
+    if(!ctx){
         fprintf(stderr,"error on creating server thread\n");
         exit(EXIT_FAILURE);
     }
@@ -173,7 +220,7 @@ int main(int argc, char** argv){
     }
 
     printf("Terminating\n");
-
+    OrazioWebsocketServer_stop(ctx);
     printf("Stopping Robot");
     stopRobot();
     for (int i=0; i<10;++i){

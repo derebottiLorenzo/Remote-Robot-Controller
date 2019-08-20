@@ -10,8 +10,9 @@ LOBJS = packet_handler.o\
 		orazio_client.o\
 		orazio_print_packet.o\
 		serial_linux.o\
-
-OBJS = rrc_ws.o
+		capture_camera_mod.o\
+		
+OBJS = rrc_ws.o\
 
 HEADERS = packet_header.h\
 		packet_operations.h\
@@ -32,19 +33,19 @@ all:	$(BINS)
 %.o:	$(PREFIX)/src/common/%.c 
 	$(CC) $(CC_OPTS) -c  $<
 
-#host 
+#rrc 
 %.o:	$(PREFIX)/src/orazio_rrc/%.c 
 	$(CC) $(CC_OPTS) -c  $<
 
-#client 
+#host 
 %.o:	$(PREFIX)/src/orazio_host/%.c 
 	$(CC) $(CC_OPTS) -c  $<
 
-rrc_client: rrc_client.o $(OBJS) $(LOBJS)
-	$(CC) $(CC_OPTS) -o $@ $< $(OBJS) $(LOBJS) $(LIBS)
+rrc_client: rrc_client.o $(LOBJS)
+	$(CC) $(CC_OPTS) -o $@ $^ $(LIBS) `pkg-config --cflags --libs opencv` 
 
-rrc_host:  rrc_host.o $(OBJS) $(LOBJS)
-	$(CC) $(CC_OPTS) -o $@ $^ $(LIBS) 
+rrc_host:  rrc_host.o $(LOBJS) $(OBJS)
+	$(CC) $(CC_OPTS) -o $@ $^ $(LIBS) `pkg-config --cflags --libs opencv`
 
 clean:
-	rm -rf $(OBJS) $(BINS) *~ *.d *.o
+	rm -rf $(OBJS) $(BINS) *~ *.d *.o buf write
