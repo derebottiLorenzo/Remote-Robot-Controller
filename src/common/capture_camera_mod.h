@@ -26,5 +26,9 @@ typedef struct camera_t{
 
 
 
-camera_t* camera_initialize(char* dev);
+camera_t* camera_initialize(char* dev, int width, int height);
 int camera_frame(camera_t* camera, struct timeval timeout);
+void camera_finish(camera_t *camera);
+void camera_close(camera_t *camera);
+uint8_t* yuyv2rgb(uint8_t* yuyv, uint32_t width, uint32_t height);
+void jpeg(FILE* dest, uint8_t* rgb, uint32_t width, uint32_t height, int quality);

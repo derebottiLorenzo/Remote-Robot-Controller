@@ -1,8 +1,7 @@
-.vscode/
 build/*.o
 src/*/*.o
 build/rrc_client
 build/rrc_host
 build/buf
-build/write
+build/result.jpg
 

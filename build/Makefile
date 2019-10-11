@@ -3,7 +3,7 @@ CC=gcc
 INCLUDE_DIRS=-I$(PREFIX)/src/common -I$(PREFIX)/src/orazio_host/ 
 CC_OPTS=-Wall -Ofast -std=gnu99 $(INCLUDE_DIRS)
 
-LIBS=-lpthread -lreadline -lwebsockets
+LIBS=-lpthread -lreadline -lwebsockets -ljpeg
 
 LOBJS = packet_handler.o\
 		deferred_packet_handler.o\
@@ -11,7 +11,7 @@ LOBJS = packet_handler.o\
 		orazio_print_packet.o\
 		serial_linux.o\
 		capture_camera_mod.o\
-		
+
 OBJS = rrc_ws.o\
 
 HEADERS = packet_header.h\
@@ -44,8 +44,8 @@ all:	$(BINS)
 rrc_client: rrc_client.o $(LOBJS)
 	$(CC) $(CC_OPTS) -o $@ $^ $(LIBS) `pkg-config --cflags --libs opencv` 
 
-rrc_host:  rrc_host.o $(LOBJS) $(OBJS)
+rrc_host:  rrc_host.o orazio_client_test_getkey.o $(LOBJS) $(OBJS)
 	$(CC) $(CC_OPTS) -o $@ $^ $(LIBS) `pkg-config --cflags --libs opencv`
 
 clean:
-	rm -rf $(OBJS) $(BINS) *~ *.d *.o buf write
+	rm -rf $(OBJS) $(BINS) *~ *.d *.o buf  *.jpg
