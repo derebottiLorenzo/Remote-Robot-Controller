@@ -115,7 +115,7 @@ int main(int argc, char** argv){
   int c = 1;
   char* serial_device = default_serial_device;
   char* cam = default_cam;
-  while(c < argc){
+  while(c < argc-1){
     if(!strcmp(argv[c], "-serial-dev")){
       c++;
       serial_device = argv[c];
